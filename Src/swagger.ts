@@ -8,11 +8,11 @@ export const swaggerDocument = {
     description: 'API documentation for the Fruit Store Backend built with Node.js, Express, and TypeScript',
   },
   servers: [
-    {
-      url: 'http://localhost:5000/api',
-      description: 'Development Server',
-    },
-  ],
+  {
+    url: "https://fruit-store-api-1.onrender.com",
+    description: "Live API",
+  },
+],
   components: {
     securitySchemes: {
       BearerAuth: {
