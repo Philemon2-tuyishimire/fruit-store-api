@@ -9,8 +9,8 @@ export const swaggerDocument = {
   },
   servers: [
   {
-    url: "https://fruit-store-api-1.onrender.com",
-    description: "Live API",
+    url: 'https://fruit-store-api-1.onrender.com',
+    description: 'Live API',
   },
 ],
   components: {
@@ -23,7 +23,7 @@ export const swaggerDocument = {
     },
   },
   paths: {
-    '/auth/register': {
+    '/api/auth/register': {
       post: {
         summary: 'Register a new user',
         tags: ['Auth'],
