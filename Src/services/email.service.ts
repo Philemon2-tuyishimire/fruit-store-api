@@ -31,15 +31,25 @@ export const sendWelcomeEmail = async (
     port,
     secure: secureValue === 'true',
     auth: { user, pass },
-    connectionTimeout: 10000,
-    greetingTimeout: 10000,
-    socketTimeout: 10000,
+    pool: true, // Helps maintain stable connection pool for SMTP relays
+    tls: {
+      rejectUnauthorized: false, // Prevents self-signed or intermediate certificate rejections on cloud hosting
+    },
+    connectionTimeout: 15000,
+    greetingTimeout: 15000,
+    socketTimeout: 15000,
   });
 
-  await transporter.sendMail({
-    from,
-    to: email,
-    subject: 'Welcome to Fruit Store',
-    text: `Hi ${name},\n\nWelcome to Fruit Store! Your account has been created successfully.\n\nWe’re glad you’re here.`,
-  });
+  try {
+    const info = await transporter.sendMail({
+      from,
+      to: email,
+      subject: 'Welcome to Fruit Store',
+      text: `Hi ${name},\n\nWelcome to Fruit Store! Your account has been created successfully.\n\nWe’re glad you’re here.`,
+    });
+    console.log('Email sent successfully:', info.messageId);
+  } catch (error) {
+    console.error('Detailed Brevo SMTP Error:', error);
+    throw error;
+  }
 };
