@@ -1,4 +1,3 @@
-
 export const swaggerDocument = {
   openapi: '3.0.0',
   info: {
@@ -25,11 +24,18 @@ export const swaggerDocument = {
     },
   },
 
+  security: [
+    {
+      BearerAuth: [],
+    },
+  ],
+
   paths: {
     '/api/auth/register': {
       post: {
         summary: 'Register a new customer',
         tags: ['Auth'],
+        security: [], // Public endpoint
         requestBody: {
           required: true,
           content: {
@@ -75,6 +81,7 @@ export const swaggerDocument = {
       post: {
         summary: 'Login user',
         tags: ['Auth'],
+        security: [], // Public endpoint
         requestBody: {
           required: true,
           content: {
@@ -116,6 +123,7 @@ export const swaggerDocument = {
       get: {
         summary: 'Get all fruits',
         tags: ['Fruits'],
+        security: [], // Public endpoint
         responses: {
           '200': {
             description: 'List of all fruits',
@@ -182,6 +190,7 @@ export const swaggerDocument = {
       get: {
         summary: 'Get fruit by ID',
         tags: ['Fruits'],
+        security: [], // Public endpoint
         parameters: [
           {
             name: 'id',
