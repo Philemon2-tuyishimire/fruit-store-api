@@ -1,55 +1,29 @@
-import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 
 export const sendWelcomeEmail = async (
   name: string,
   email: string
 ): Promise<void> => {
-  const host = process.env.SMTP_HOST;
-  const port = Number(process.env.SMTP_PORT);
-  const secureValue = process.env.SMTP_SECURE?.toLowerCase();
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
-  const from = process.env.SMTP_FROM;
+  const apiKey = process.env.RESEND_API_KEY;
+  // Fallbacks to Resend's onboarding domain if SMTP_FROM isn't set, or uses your configured sender
+  const from = process.env.SMTP_FROM || 'Fruit Store <onboarding@resend.dev>';
 
-  if (
-    !host ||
-    !Number.isInteger(port) ||
-    port < 1 ||
-    port > 65535 ||
-    (secureValue !== 'true' && secureValue !== 'false') ||
-    !user ||
-    !pass ||
-    !from
-  ) {
-    throw new Error(
-      'SMTP configuration is missing or invalid. Set SMTP_HOST, SMTP_PORT, SMTP_SECURE, SMTP_USER, SMTP_PASS, and SMTP_FROM.'
-    );
+  if (!apiKey) {
+    throw new Error('RESEND_API_KEY configuration is missing. Set RESEND_API_KEY.');
   }
 
-  const transporter = nodemailer.createTransport({
-    host,
-    port,
-    secure: secureValue === 'true',
-    auth: { user, pass },
-    pool: true, // Helps maintain stable connection pool for SMTP relays
-    tls: {
-      rejectUnauthorized: false, // Prevents self-signed or intermediate certificate rejections on cloud hosting
-    },
-    connectionTimeout: 15000,
-    greetingTimeout: 15000,
-    socketTimeout: 15000,
-  });
+  const resend = new Resend(apiKey);
 
   try {
-    const info = await transporter.sendMail({
+    const data = await resend.emails.send({
       from,
-      to: email,
+      to: [email],
       subject: 'Welcome to Fruit Store',
       text: `Hi ${name},\n\nWelcome to Fruit Store! Your account has been created successfully.\n\nWe’re glad you’re here.`,
     });
-    console.log('Email sent successfully:', info.messageId);
+    console.log('Email sent successfully via Resend:', data);
   } catch (error) {
-    console.error('Detailed Brevo SMTP Error:', error);
+    console.error('Detailed Resend Error:', error);
     throw error;
   }
 };
