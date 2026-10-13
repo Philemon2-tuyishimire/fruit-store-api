@@ -193,12 +193,54 @@ export const swaggerDocument = {
 
     '/api/fruits': {
       get: {
-        summary: 'Get all fruits',
+        summary: 'Get all fruits with pagination and filtering',
         tags: ['Fruits'],
         security: [], // Public endpoint
+        parameters: [
+          {
+            name: 'page',
+            in: 'query',
+            required: false,
+            description: 'Page number for pagination (default: 1)',
+            schema: {
+              type: 'integer',
+              example: 1,
+            },
+          },
+          {
+            name: 'limit',
+            in: 'query',
+            required: false,
+            description: 'Number of items per page (default: 10)',
+            schema: {
+              type: 'integer',
+              example: 10,
+            },
+          },
+          {
+            name: 'category',
+            in: 'query',
+            required: false,
+            description: 'Filter fruits by category name',
+            schema: {
+              type: 'string',
+              example: 'Tree Fruits',
+            },
+          },
+          {
+            name: 'search',
+            in: 'query',
+            required: false,
+            description: 'Keyword search for fruit name or description',
+            schema: {
+              type: 'string',
+              example: 'organic',
+            },
+          },
+        ],
         responses: {
           '200': {
-            description: 'List of all fruits',
+            description: 'Paginated list of fruits with metadata',
           },
         },
       },

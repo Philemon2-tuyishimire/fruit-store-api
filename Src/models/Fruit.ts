@@ -1,4 +1,3 @@
-
 import { Schema, model, Document } from 'mongoose';
 
 export interface IFruit extends Document {
@@ -43,6 +42,7 @@ const fruitSchema = new Schema<IFruit>(
       type: String,
       required: [true, 'Fruit category is required.'],
       trim: true,
+      index: true, // Indexed for fast category filtering
     },
 
     imageUrl: {
@@ -55,5 +55,9 @@ const fruitSchema = new Schema<IFruit>(
     timestamps: true,
   }
 );
+
+// Add database indexes for sorting and searching performance
+fruitSchema.index({ price: 1 });
+fruitSchema.index({ name: 'text', description: 'text' });
 
 export const Fruit = model<IFruit>('Fruit', fruitSchema);

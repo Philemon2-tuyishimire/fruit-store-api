@@ -1,17 +1,48 @@
-
 import { Request, Response } from 'express';
 import { Fruit } from '../models/Fruit';
 
-// Get all fruits
+// Get all fruits with pagination, filtering, and searching
 export const getFruits = async (
   req: Request,
   res: Response
 ): Promise<void> => {
   try {
-    const fruits = await Fruit.find();
+    // Parse query parameters with defaults
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const category = req.query.category as string;
+    const search = req.query.search as string;
+
+    // Build filter query object
+    const filter: Record<string, unknown> = {};
+    if (category) {
+      filter.category = category;
+    }
+    if (search) {
+      filter.$text = { $search: search };
+    }
+
+    const skip = (page - 1) * limit;
+
+    // Fetch fruits and total count concurrently for pagination metadata
+    const [fruits, totalFruits] = await Promise.all([
+      Fruit.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit),
+      Fruit.countDocuments(filter),
+    ]);
+
+    const totalPages = Math.ceil(totalFruits / limit);
 
     res.status(200).json({
+      success: true,
       count: fruits.length,
+      pagination: {
+        totalFruits,
+        totalPages,
+        currentPage: page,
+        limit,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+      },
       fruits,
     });
   } catch (error: unknown) {
