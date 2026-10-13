@@ -119,6 +119,78 @@ export const swaggerDocument = {
       },
     },
 
+    '/api/auth/forgot-password': {
+      post: {
+        summary: 'Request a password reset email',
+        tags: ['Auth'],
+        security: [], // Public endpoint
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['email'],
+                properties: {
+                  email: {
+                    type: 'string',
+                    format: 'email',
+                    example: 'tuyishimirephilemon1999@gmail.com',
+                  },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '200': {
+            description: 'Password reset email sent message',
+          },
+          '400': {
+            description: 'Invalid email format or missing field',
+          },
+        },
+      },
+    },
+
+    '/api/auth/reset-password': {
+      post: {
+        summary: 'Reset password using the token from email',
+        tags: ['Auth'],
+        security: [], // Public endpoint
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['token', 'newPassword'],
+                properties: {
+                  token: {
+                    type: 'string',
+                    example: 'your_reset_token_here',
+                  },
+                  newPassword: {
+                    type: 'string',
+                    format: 'password',
+                    example: 'NewSecurePassword123!',
+                  },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '200': {
+            description: 'Password has been successfully reset',
+          },
+          '400': {
+            description: 'Invalid or expired password reset token',
+          },
+        },
+      },
+    },
+
     '/api/fruits': {
       get: {
         summary: 'Get all fruits',
