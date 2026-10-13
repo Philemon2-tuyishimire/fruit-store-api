@@ -6,6 +6,8 @@ export interface IUser extends Document {
   passwordHash: string;
   role: 'admin' | 'customer';
   createdAt: Date;
+  resetPasswordToken?: string;
+  resetPasswordExpires?: Date;
 }
 
 const userSchema = new Schema<IUser>({
@@ -13,7 +15,9 @@ const userSchema = new Schema<IUser>({
   email: { type: String, required: true, unique: true, lowercase: true },
   passwordHash: { type: String, required: true },
   role: { type: String, enum: ['admin', 'customer'], default: 'customer' },
-  createdAt: { type: Date, default: Date.now }
+  createdAt: { type: Date, default: Date.now },
+  resetPasswordToken: { type: String },
+  resetPasswordExpires: { type: Date }
 });
 
 export const User = model<IUser>('User', userSchema);
