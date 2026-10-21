@@ -56,10 +56,10 @@ export const register = async (
       return;
     }
 
-    // Validate role if supplied
+    // Validate role if supplied (updated to include 'seller')
     if (
       role !== undefined &&
-      !['customer', 'admin'].includes(role)
+      !['customer', 'seller', 'admin'].includes(role)
     ) {
       res.status(400).json({
         message: 'Invalid role.',
@@ -108,6 +108,7 @@ export const register = async (
         ? 'User registered successfully.'
         : 'User registered successfully, but the welcome email could not be sent.',
       userId: user._id,
+      role: user.role,
       welcomeEmailSent,
     });
   } catch (error: unknown) {
