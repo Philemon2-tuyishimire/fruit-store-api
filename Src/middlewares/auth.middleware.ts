@@ -22,10 +22,18 @@ export const verifyToken = (req: AuthRequest, res: Response, next: NextFunction)
   }
 };
 
-export const verifyAdmin = (req: AuthRequest, res: Response, next: NextFunction): void => {
-  if (!req.user || req.user.role !== 'admin') {
-    res.status(403).json({ message: 'Access denied. Admin role required.' });
-    return;
-  }
-  next();
+// Flexible role verification middleware
+export const verifyRole = (allowedRoles: string[]) => {
+  return (req: AuthRequest, res: Response, next: NextFunction): void => {
+    if (!req.user || !allowedRoles.includes(req.user.role)) {
+      res.status(403).json({ 
+        message: `Access denied. Required role: ${allowedRoles.join(' or ')}.` 
+      });
+      return;
+    }
+    next();
+  };
 };
+
+// Backward compatibility for existing admin-only routes
+export const verifyAdmin = verifyRole(['admin']);
