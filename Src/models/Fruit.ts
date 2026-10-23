@@ -1,3 +1,4 @@
+// src/models/Fruit.ts
 import { Schema, model, Document } from 'mongoose';
 
 export interface IFruit extends Document {
@@ -7,6 +8,7 @@ export interface IFruit extends Document {
   stock: number;
   category: string;
   imageUrl: string;
+  createdBy?: string; // Tracks the user who added the fruit
   createdAt: Date;
   updatedAt: Date;
 }
@@ -49,6 +51,12 @@ const fruitSchema = new Schema<IFruit>(
       type: String,
       required: [true, 'Fruit image URL is required.'],
       trim: true,
+    },
+
+    createdBy: {
+      type: String,
+      trim: true,
+      index: true, // Indexed for rapid seller-specific filtering
     },
   },
   {

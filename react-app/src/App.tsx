@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { Search, ShoppingBag, SlidersHorizontal, ArrowRight, Sparkles, ShieldAlert, User, Trash2, Plus, Minus, X } from 'lucide-react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { Search, ShoppingBag, SlidersHorizontal, ArrowRight, Sparkles, ShieldAlert, User, Trash2, Plus, Minus, X, LogOut } from 'lucide-react';
 import { mockFruits, Fruit } from './data/mockFruits';
 import { AdminDashboard } from './components/AdminDashboard';
 import { AuthModal } from './components/AuthModal';
@@ -19,8 +19,8 @@ export function App() {
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   
-  // Track user name, email, and explicit role ('buyer' | 'seller' | 'admin')
-  const [currentUser, setCurrentUser] = useState<{ name: string; email: string; role: 'buyer' | 'seller' | 'admin' } | null>(null);
+  // Track user name, email, and explicit role ('customer' | 'seller' | 'admin')
+  const [currentUser, setCurrentUser] = useState<{ name: string; email: string; role: 'customer' | 'seller' | 'admin' } | null>(null);
   
   const [activeTab, setActiveTab] = useState('Home');
   const [searchQuery, setSearchQuery] = useState('');
@@ -29,6 +29,41 @@ export function App() {
 
   // Local state for mutations/fallback management
   const [localFruits, setLocalFruits] = useState<Fruit[]>([]);
+
+  // Check localStorage on initial page load so authentication state persists safely
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    const role = localStorage.getItem('role') as 'customer' | 'seller' | 'admin' | null;
+    const name = localStorage.getItem('userName');
+    const email = localStorage.getItem('userEmail');
+
+    if (token && role) {
+      setCurrentUser({
+        name: name || email?.split('@')[0] || 'User',
+        email: email || '',
+        role: role,
+      });
+    }
+  }, []);
+
+  // Handle successful login/registration
+  const handleLoginSuccess = (user: { name: string; email: string; role: 'customer' | 'seller' | 'admin' }) => {
+    setCurrentUser(user);
+    localStorage.setItem('userName', user.name);
+    localStorage.setItem('userEmail', user.email);
+    localStorage.setItem('role', user.role);
+  };
+
+  // Handle User Logout & Clear Local Storage
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('role');
+    localStorage.removeItem('userName');
+    localStorage.removeItem('userEmail');
+    setCurrentUser(null);
+    setIsAdminOpen(false);
+    alert('You have been logged out successfully.');
+  };
 
   // CRUD Handlers for Admin Dashboard (Restricted to Sellers/Admins)
   const handleAddFruit = (newFruitData: Omit<Fruit, '_id' | 'createdAt'>) => {
@@ -151,7 +186,7 @@ export function App() {
             </button>
             <div className="h-6 w-px bg-slate-200 mx-1 hidden sm:block"></div>
             
-            {/* Cart Trigger Button (Accessible to all, primary for Buyers) */}
+            {/* Cart Trigger Button */}
             <button 
               onClick={() => setIsCartOpen(true)}
               className="relative flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl text-sm font-semibold shadow-sm transition-all cursor-pointer"
@@ -176,14 +211,31 @@ export function App() {
               </button>
             )}
 
-            {/* Account / Auth Button */}
-            <button 
-              onClick={() => setIsAuthOpen(true)}
-              className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl text-sm font-semibold shadow-sm transition-all cursor-pointer"
-            >
-              <User className="w-4 h-4 text-emerald-200" />
-              <span>{currentUser ? `${currentUser.name} (${currentUser.role})` : 'Account'}</span>
-            </button>
+            {/* Account / Auth / Logout Section */}
+            {currentUser ? (
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 bg-slate-100 border border-slate-200 px-3 py-2 rounded-xl text-sm font-bold text-slate-800">
+                  <User className="w-4 h-4 text-emerald-600" />
+                  <span>{currentUser.name} <span className="text-xs font-normal text-slate-500">({currentUser.role})</span></span>
+                </div>
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center gap-1.5 bg-red-500 hover:bg-red-600 text-white px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all cursor-pointer shadow-sm"
+                  title="Logout"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span className="hidden sm:inline">Logout</span>
+                </button>
+              </div>
+            ) : (
+              <button 
+                onClick={() => setIsAuthOpen(true)}
+                className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl text-sm font-semibold shadow-sm transition-all cursor-pointer"
+              >
+                <User className="w-4 h-4 text-emerald-200" />
+                <span>Account</span>
+              </button>
+            )}
           </div>
 
         </div>
@@ -414,9 +466,6 @@ export function App() {
       {isAdminOpen && currentUser && (currentUser.role === 'seller' || currentUser.role === 'admin') && (
         <AdminDashboard
           fruits={combinedFruits}
-          onAddFruit={handleAddFruit}
-          onUpdateFruit={handleUpdateFruit}
-          onDeleteFruit={handleDeleteFruit}
           onClose={() => setIsAdminOpen(false)}
         />
       )}
@@ -425,7 +474,7 @@ export function App() {
       <AuthModal
         isOpen={isAuthOpen}
         onClose={() => setIsAuthOpen(false)}
-        onLoginSuccess={(user) => setCurrentUser(user)}
+        onLoginSuccess={handleLoginSuccess}
       />
 
       {/* Footer */}

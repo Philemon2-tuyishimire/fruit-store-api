@@ -189,11 +189,12 @@ export const login = async (
       return;
     }
 
-    // Generate the authentication token
+    // Generate the authentication token (now includes user name for creator tracking)
     const token = jwt.sign(
       {
         id: user._id.toString(),
         role: user.role,
+        name: user.name, // Injected for backend fruit ownership matching
       },
       jwtSecret,
       {
@@ -206,6 +207,7 @@ export const login = async (
       message: 'Login successful.',
       token,
       role: user.role,
+      userName: user.name, // Returned for frontend localStorage mapping
     });
   } catch (error: unknown) {
     console.error('Login error:', error);

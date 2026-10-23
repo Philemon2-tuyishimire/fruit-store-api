@@ -1,19 +1,26 @@
 import { Request, Response } from 'express';
 import { Fruit } from '../models/Fruit';
 
+// Extend Express Request interface to include decoded user from auth middleware
+interface AuthRequest extends Request {
+  user?: {
+    id: string;
+    role: 'customer' | 'seller' | 'admin';
+    name?: string;
+  };
+}
+
 // Get all fruits with pagination, filtering, and searching
 export const getFruits = async (
   req: Request,
   res: Response
 ): Promise<void> => {
   try {
-    // Parse query parameters with defaults
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
     const category = req.query.category as string;
     const search = req.query.search as string;
 
-    // Build filter query object
     const filter: Record<string, unknown> = {};
     if (category) {
       filter.category = category;
@@ -24,7 +31,6 @@ export const getFruits = async (
 
     const skip = (page - 1) * limit;
 
-    // Fetch fruits and total count concurrently for pagination metadata
     const [fruits, totalFruits] = await Promise.all([
       Fruit.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit),
       Fruit.countDocuments(filter),
@@ -47,7 +53,6 @@ export const getFruits = async (
     });
   } catch (error: unknown) {
     console.error('Get fruits error:', error);
-
     res.status(500).json({
       message: 'Failed to retrieve fruits.',
       error: error instanceof Error ? error.message : String(error),
@@ -73,7 +78,6 @@ export const getFruitById = async (
     res.status(200).json(fruit);
   } catch (error: unknown) {
     console.error('Get fruit by ID error:', error);
-
     res.status(500).json({
       message: 'Failed to retrieve fruit.',
       error: error instanceof Error ? error.message : String(error),
@@ -81,9 +85,9 @@ export const getFruitById = async (
   }
 };
 
-// Create a new fruit
+// Create a new fruit (Attaches current user as creator)
 export const createFruit = async (
-  req: Request,
+  req: AuthRequest,
   res: Response
 ): Promise<void> => {
   try {
@@ -109,15 +113,17 @@ export const createFruit = async (
       return;
     }
 
-    const imageUrl = req.file?.path;
+    const imageUrl = req.file?.path || req.body.imageUrl;
 
     if (!imageUrl) {
       res.status(400).json({
-        message:
-          'Fruit image is required. Upload an image using the image field.',
+        message: 'Fruit image is required.',
       });
       return;
     }
+
+    // Get the creator's name from the verified JWT middleware session
+    const creatorName = req.user?.name || 'Admin';
 
     const fruit = new Fruit({
       name: name.trim(),
@@ -126,6 +132,7 @@ export const createFruit = async (
       stock: Number(stock),
       category,
       imageUrl,
+      createdBy: creatorName,
     });
 
     await fruit.save();
@@ -136,7 +143,6 @@ export const createFruit = async (
     });
   } catch (error: unknown) {
     console.error('Create fruit error:', error);
-
     res.status(500).json({
       message: 'Failed to create fruit.',
       error: error instanceof Error ? error.message : String(error),
@@ -144,12 +150,30 @@ export const createFruit = async (
   }
 };
 
-// Update an existing fruit
+// Update an existing fruit (Sellers can only update their own items)
 export const updateFruit = async (
-  req: Request,
+  req: AuthRequest,
   res: Response
 ): Promise<void> => {
   try {
+    const fruitId = req.params.id;
+    const existingFruit = await Fruit.findById(fruitId);
+
+    if (!existingFruit) {
+      res.status(404).json({
+        message: 'Fruit not found.',
+      });
+      return;
+    }
+
+    // Enforce seller isolation: sellers can only edit items they created
+    if (req.user?.role === 'seller' && existingFruit.createdBy && existingFruit.createdBy !== req.user.name) {
+      res.status(403).json({
+        message: 'Access denied. You can only update your own added fruits.',
+      });
+      return;
+    }
+
     const updateData: Record<string, unknown> = {
       ...req.body,
     };
@@ -167,7 +191,7 @@ export const updateFruit = async (
     }
 
     const fruit = await Fruit.findByIdAndUpdate(
-      req.params.id,
+      fruitId,
       updateData,
       {
         new: true,
@@ -175,20 +199,12 @@ export const updateFruit = async (
       }
     );
 
-    if (!fruit) {
-      res.status(404).json({
-        message: 'Fruit not found.',
-      });
-      return;
-    }
-
     res.status(200).json({
       message: 'Fruit updated successfully.',
       fruit,
     });
   } catch (error: unknown) {
     console.error('Update fruit error:', error);
-
     res.status(500).json({
       message: 'Failed to update fruit.',
       error: error instanceof Error ? error.message : String(error),
@@ -196,27 +212,37 @@ export const updateFruit = async (
   }
 };
 
-// Delete a fruit
+// Delete a fruit (Sellers can only delete their own items)
 export const deleteFruit = async (
-  req: Request,
+  req: AuthRequest,
   res: Response
 ): Promise<void> => {
   try {
-    const fruit = await Fruit.findByIdAndDelete(req.params.id);
+    const fruitId = req.params.id;
+    const existingFruit = await Fruit.findById(fruitId);
 
-    if (!fruit) {
+    if (!existingFruit) {
       res.status(404).json({
         message: 'Fruit not found.',
       });
       return;
     }
 
+    // Enforce seller isolation: sellers can only delete items they created
+    if (req.user?.role === 'seller' && existingFruit.createdBy && existingFruit.createdBy !== req.user.name) {
+      res.status(403).json({
+        message: 'Access denied. You can only delete your own added fruits.',
+      });
+      return;
+    }
+
+    await Fruit.findByIdAndDelete(fruitId);
+
     res.status(200).json({
       message: 'Fruit deleted successfully.',
     });
   } catch (error: unknown) {
     console.error('Delete fruit error:', error);
-
     res.status(500).json({
       message: 'Failed to delete fruit.',
       error: error instanceof Error ? error.message : String(error),
