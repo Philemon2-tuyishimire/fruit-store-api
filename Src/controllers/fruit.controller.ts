@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
+import jwt from 'jsonwebtoken';
 import { Fruit } from '../models/Fruit';
 
-// Extend Express Request interface to include decoded user from auth middleware
 interface AuthRequest extends Request {
   user?: {
     id: string;
@@ -10,7 +10,7 @@ interface AuthRequest extends Request {
   };
 }
 
-// Get all fruits with pagination, filtering, and searching
+// Get all fruits with pagination, filtering, searching, and seller isolation
 export const getFruits = async (
   req: Request,
   res: Response
@@ -27,6 +27,25 @@ export const getFruits = async (
     }
     if (search) {
       filter.$text = { $search: search };
+    }
+
+    // Optionally check if a logged-in seller is making the request
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      try {
+        const token = authHeader.split(' ')[1];
+        const decoded = jwt.verify(
+          token,
+          process.env.JWT_SECRET as string
+        ) as { role: string; name?: string };
+
+        // If user is a seller, isolate products to only those created by them
+        if (decoded.role === 'seller' && decoded.name) {
+          filter.createdBy = decoded.name;
+        }
+      } catch (err) {
+        // Invalid token; proceed as guest/customer
+      }
     }
 
     const skip = (page - 1) * limit;
@@ -117,12 +136,11 @@ export const createFruit = async (
 
     if (!imageUrl) {
       res.status(400).json({
-        message: 'Fruit image is required.',
+        message: 'Fruit image URL or file is required.',
       });
       return;
     }
 
-    // Get the creator's name from the verified JWT middleware session
     const creatorName = req.user?.name || 'Admin';
 
     const fruit = new Fruit({
@@ -150,7 +168,7 @@ export const createFruit = async (
   }
 };
 
-// Update an existing fruit (Sellers can only update their own items)
+// Update an existing fruit
 export const updateFruit = async (
   req: AuthRequest,
   res: Response
@@ -166,8 +184,11 @@ export const updateFruit = async (
       return;
     }
 
-    // Enforce seller isolation: sellers can only edit items they created
-    if (req.user?.role === 'seller' && existingFruit.createdBy && existingFruit.createdBy !== req.user.name) {
+    if (
+      req.user?.role === 'seller' &&
+      existingFruit.createdBy &&
+      existingFruit.createdBy !== req.user.name
+    ) {
       res.status(403).json({
         message: 'Access denied. You can only update your own added fruits.',
       });
@@ -190,14 +211,10 @@ export const updateFruit = async (
       updateData.stock = Number(updateData.stock);
     }
 
-    const fruit = await Fruit.findByIdAndUpdate(
-      fruitId,
-      updateData,
-      {
-        new: true,
-        runValidators: true,
-      }
-    );
+    const fruit = await Fruit.findByIdAndUpdate(fruitId, updateData, {
+      new: true,
+      runValidators: true,
+    });
 
     res.status(200).json({
       message: 'Fruit updated successfully.',
@@ -212,7 +229,7 @@ export const updateFruit = async (
   }
 };
 
-// Delete a fruit (Sellers can only delete their own items)
+// Delete a fruit
 export const deleteFruit = async (
   req: AuthRequest,
   res: Response
@@ -228,8 +245,11 @@ export const deleteFruit = async (
       return;
     }
 
-    // Enforce seller isolation: sellers can only delete items they created
-    if (req.user?.role === 'seller' && existingFruit.createdBy && existingFruit.createdBy !== req.user.name) {
+    if (
+      req.user?.role === 'seller' &&
+      existingFruit.createdBy &&
+      existingFruit.createdBy !== req.user.name
+    ) {
       res.status(403).json({
         message: 'Access denied. You can only delete your own added fruits.',
       });
